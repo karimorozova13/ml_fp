@@ -46,7 +46,7 @@ preprocessor = ColumnTransformer(
         ('num', SimpleImputer(strategy='median'), numerical_features),
         ('cat', Pipeline(steps=[
             ('imputer', SimpleImputer(strategy='most_frequent')),
-            ('encoder', TargetEncoder(random_state=42))
+            ('encoder', TargetEncoder())
         ]), categorical_features)
     ]
 )

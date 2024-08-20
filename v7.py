@@ -1,4 +1,4 @@
-# 
+#  0.6427
 
 # %%
 import pandas as pd
@@ -14,6 +14,7 @@ from sklearn.decomposition import PCA, TruncatedSVD
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline as ImbPipeline
 from sklearn.metrics import accuracy_score
+from xgboost import XGBClassifier
 
 # %%
 X_train = pd.read_csv('./datasets/final_proj_data.csv')
@@ -46,8 +47,7 @@ preprocessor = ColumnTransformer(
         ('num', SimpleImputer(strategy='median'), numerical_features),
         ('cat', Pipeline(steps=[
             ('imputer', SimpleImputer(strategy='most_frequent')),
-            ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False)),
-            ('svd', TruncatedSVD(n_components=20))
+            ('encoder', TargetEncoder()),
         ]), categorical_features)
     ]
 )
@@ -57,14 +57,11 @@ pipeline = ImbPipeline(steps=[
     ('preprocessor', preprocessor),
     ('smote', SMOTE(random_state=42)),
     ('scaler', StandardScaler()),
-    # ('pca', PCA(n_components=20)),
-    ('classifier', GradientBoostingClassifier(random_state=42))
+    ('pca', PCA(n_components=20)),
+    ('classifier', XGBClassifier(random_state=42, use_label_encoder=False))
 ])
 
 # %%
-scores = cross_val_score(pipeline, X_train, y, cv=5, scoring='balanced_accuracy')
-print(f'Cross-validated balanced accuracy: {np.mean(scores):.4f}')
-
 
 param_grid = {
     'classifier__n_estimators': [50, 100, 200],
@@ -89,3 +86,4 @@ results = pd.DataFrame({
     'y': grid_search.best_estimator_.predict(X_test)
 })
 results.to_csv('./datasets/submission.csv', index=False)
+
