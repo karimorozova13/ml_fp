@@ -1,19 +1,24 @@
-# 0.7786
+# 0.8331
 
 # %%
 import pandas as pd
 import numpy as np
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from category_encoders import TargetEncoder
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, RobustScaler
 from sklearn.compose import ColumnTransformer
-from sklearn.model_selection import GridSearchCV, cross_val_score
-from sklearn.ensemble import GradientBoostingClassifier  
-from sklearn.decomposition import PCA, TruncatedSVD
+from sklearn.model_selection import GridSearchCV, cross_val_score, RandomizedSearchCV
+from sklearn.decomposition import TruncatedSVD
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline as ImbPipeline
 from sklearn.metrics import accuracy_score
+from sklearn.compose import make_column_selector
+from sklearn.ensemble import StackingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from scipy.stats import randint
 
 # %%
 X_train = pd.read_csv('./datasets/final_proj_data.csv')
@@ -37,18 +42,14 @@ X_train.drop(columns=columns_to_drop, inplace=True)
 X_test.drop(columns=columns_to_drop, inplace=True)
 
 # %%
-categorical_features = X_train.select_dtypes(include=['object']).columns
-numerical_features = X_train.select_dtypes(exclude=['object']).columns
-
-# %%
 preprocessor = ColumnTransformer(
     transformers=[
-        ('num', SimpleImputer(strategy='median'), numerical_features),
+        ('num', SimpleImputer(strategy='median'),  make_column_selector(dtype_exclude='object')),
         ('cat', Pipeline(steps=[
             ('imputer', SimpleImputer(strategy='most_frequent')),
-            ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False)),
+            ('encoder', OneHotEncoder(handle_unknown='ignore', sparse_output=False)),
             ('svd', TruncatedSVD(n_components=20))
-        ]), categorical_features)
+        ]), make_column_selector(dtype_include='object'))
     ]
 )
 
@@ -57,28 +58,31 @@ pipeline = ImbPipeline(steps=[
     ('preprocessor', preprocessor),
     ('smote', SMOTE(random_state=42)),
     ('scaler', StandardScaler()),
-    # ('pca', PCA(n_components=20)),
-    ('classifier', GradientBoostingClassifier(random_state=42))
+    ('classifier', RandomForestClassifier(random_state=42))
 ])
 
 # %%
 scores = cross_val_score(pipeline, X_train, y, cv=5, scoring='balanced_accuracy')
 print(f'Cross-validated balanced accuracy: {np.mean(scores):.4f}')
 
-
-param_grid = {
-    'classifier__n_estimators': [50, 100, 200],
-    'classifier__max_depth': [None, 10, 20, 30],
+param_dist = {
+    'classifier__n_estimators': randint(50, 150),
+    'classifier__max_depth': randint(10, 30),
+    'classifier__min_samples_split': randint(2, 10),
+    'classifier__min_samples_leaf': randint(1, 5)
 }
 
-grid_search = GridSearchCV(pipeline, 
-                           param_grid, 
-                           cv=5, 
-                           n_jobs=-1, 
-                           scoring='balanced_accuracy', 
-                           verbose=2)
+random_search = RandomizedSearchCV(
+    pipeline, 
+    param_distributions=param_dist, 
+    n_iter=10, 
+    cv=5, 
+    n_jobs=-1, 
+    scoring='balanced_accuracy', 
+    verbose=2
+)
 
-grid_search.fit(X_train, y)
+random_search.fit(X_train, y)
 
 print(f'Best cross-validated balanced accuracy: {grid_search.best_score_:.4f}')
 
@@ -86,6 +90,13 @@ print(f'Best cross-validated balanced accuracy: {grid_search.best_score_:.4f}')
 client_ids = X_test.index 
 results = pd.DataFrame({
     'index': client_ids,
-    'y': grid_search.best_estimator_.predict(X_test)
+    'y': random_search.best_estimator_.predict(X_test)
 })
 results.to_csv('./datasets/submission.csv', index=False)
+
+# -*- coding: utf-8 -*-
+
+# -*- coding: utf-8 -*-
+
+# -*- coding: utf-8 -*-
+

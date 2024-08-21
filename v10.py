@@ -1,4 +1,4 @@
-# 0.7786
+# 0.7955
 
 # %%
 import pandas as pd
@@ -14,6 +14,8 @@ from sklearn.decomposition import PCA, TruncatedSVD
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline as ImbPipeline
 from sklearn.metrics import accuracy_score
+from category_encoders.woe import WOEEncoder
+from sklearn.linear_model import LogisticRegression
 
 # %%
 X_train = pd.read_csv('./datasets/final_proj_data.csv')
@@ -46,7 +48,7 @@ preprocessor = ColumnTransformer(
         ('num', SimpleImputer(strategy='median'), numerical_features),
         ('cat', Pipeline(steps=[
             ('imputer', SimpleImputer(strategy='most_frequent')),
-            ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False)),
+            ('encoder', OneHotEncoder(handle_unknown='ignore', sparse_output=False)),
             ('svd', TruncatedSVD(n_components=20))
         ]), categorical_features)
     ]
@@ -58,7 +60,7 @@ pipeline = ImbPipeline(steps=[
     ('smote', SMOTE(random_state=42)),
     ('scaler', StandardScaler()),
     # ('pca', PCA(n_components=20)),
-    ('classifier', GradientBoostingClassifier(random_state=42))
+    ('classifier', LogisticRegression(random_state=42, max_iter=1000))
 ])
 
 # %%
@@ -67,8 +69,10 @@ print(f'Cross-validated balanced accuracy: {np.mean(scores):.4f}')
 
 
 param_grid = {
-    'classifier__n_estimators': [50, 100, 200],
-    'classifier__max_depth': [None, 10, 20, 30],
+    'classifier__C': [0.1, 1, 10],   # Regularization strength
+    'classifier__penalty': ['l2'],  # Type of regularization
+    'classifier__solver': ['liblinear'],  # Solver to use for optimization
+    'classifier__max_iter': [100, 200, 500]  # Maximum number of iterations
 }
 
 grid_search = GridSearchCV(pipeline, 
@@ -89,3 +93,5 @@ results = pd.DataFrame({
     'y': grid_search.best_estimator_.predict(X_test)
 })
 results.to_csv('./datasets/submission.csv', index=False)
+# -*- coding: utf-8 -*-
+

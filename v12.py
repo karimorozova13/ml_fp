@@ -1,4 +1,4 @@
-# 0.7786
+# 0.8331
 
 # %%
 import pandas as pd
@@ -8,12 +8,15 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from category_encoders import TargetEncoder
 from sklearn.compose import ColumnTransformer
-from sklearn.model_selection import GridSearchCV, cross_val_score
-from sklearn.ensemble import GradientBoostingClassifier  
+from sklearn.model_selection import GridSearchCV, cross_val_score, RandomizedSearchCV
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.decomposition import PCA, TruncatedSVD
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline as ImbPipeline
 from sklearn.metrics import accuracy_score
+from category_encoders.woe import WOEEncoder
+from sklearn.linear_model import LogisticRegression
+from scipy.stats import uniform
 
 # %%
 X_train = pd.read_csv('./datasets/final_proj_data.csv')
@@ -46,7 +49,7 @@ preprocessor = ColumnTransformer(
         ('num', SimpleImputer(strategy='median'), numerical_features),
         ('cat', Pipeline(steps=[
             ('imputer', SimpleImputer(strategy='most_frequent')),
-            ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False)),
+            ('encoder', OneHotEncoder(handle_unknown='ignore', sparse_output=False)),
             ('svd', TruncatedSVD(n_components=20))
         ]), categorical_features)
     ]
@@ -58,17 +61,18 @@ pipeline = ImbPipeline(steps=[
     ('smote', SMOTE(random_state=42)),
     ('scaler', StandardScaler()),
     # ('pca', PCA(n_components=20)),
-    ('classifier', GradientBoostingClassifier(random_state=42))
+    ('classifier', RandomForestClassifier(random_state=42))
 ])
 
 # %%
 scores = cross_val_score(pipeline, X_train, y, cv=5, scoring='balanced_accuracy')
 print(f'Cross-validated balanced accuracy: {np.mean(scores):.4f}')
 
-
 param_grid = {
-    'classifier__n_estimators': [50, 100, 200],
-    'classifier__max_depth': [None, 10, 20, 30],
+    'classifier__n_estimators': [50, 100],  # Fewer options for number of trees
+    'classifier__max_depth': [10, 20],  # Limit the depth options
+    'classifier__min_samples_split': [2, 5],  # Reduce the number of split options
+    'classifier__min_samples_leaf': [1, 2]  # Fewer options for minimum samples at leaf
 }
 
 grid_search = GridSearchCV(pipeline, 
@@ -89,3 +93,7 @@ results = pd.DataFrame({
     'y': grid_search.best_estimator_.predict(X_test)
 })
 results.to_csv('./datasets/submission.csv', index=False)
+# -*- coding: utf-8 -*-
+
+# -*- coding: utf-8 -*-
+
