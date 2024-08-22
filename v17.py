@@ -1,4 +1,4 @@
-# 0.8331
+# 0.
 
 # %%
 import pandas as pd
@@ -103,10 +103,3 @@ results = pd.DataFrame({
     'y': grid_search.best_estimator_.predict(X_test)
 })
 results.to_csv('./datasets/submission.csv', index=False)
-
-# -*- coding: utf-8 -*-
-
-# -*- coding: utf-8 -*-
-
-# -*- coding: utf-8 -*-
-

@@ -1,11 +1,11 @@
-# 0.8331
+# ` 0.7864
 
 # %%
 import pandas as pd
 import numpy as np
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, PolynomialFeatures
 from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import GridSearchCV, cross_val_score
 from sklearn.decomposition import TruncatedSVD

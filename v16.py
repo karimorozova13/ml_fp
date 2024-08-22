@@ -1,4 +1,4 @@
-# 0.8331
+# 0.8181
 
 # %%
 import pandas as pd
@@ -18,6 +18,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.naive_bayes import GaussianNB
+from sklearn.feature_selection import SelectFromModel
 
 # %%
 X_train = pd.read_csv('./datasets/final_proj_data.csv')
@@ -87,11 +88,6 @@ print(f'Best cross-validated balanced accuracy: {grid_search.best_score_:.4f}')
 client_ids = X_test.index 
 results = pd.DataFrame({
     'index': client_ids,
-    'y': grid_search.best_estimator_.predict(X_test)
+    'y': model_upd.best_estimator_.predict(X_test)
 })
 results.to_csv('./datasets/submission.csv', index=False)
-
-# -*- coding: utf-8 -*-
-
-# -*- coding: utf-8 -*-
-

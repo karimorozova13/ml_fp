@@ -1,13 +1,13 @@
-# 0.
+# 
 
 # %%
 import pandas as pd
 import numpy as np
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder, RobustScaler
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, RobustScaler, PolynomialFeatures
 from sklearn.compose import ColumnTransformer
-from sklearn.model_selection import GridSearchCV, cross_val_score, RandomizedSearchCV
+from sklearn.model_selection import GridSearchCV, cross_val_score
 from sklearn.decomposition import TruncatedSVD
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline as ImbPipeline
@@ -18,7 +18,6 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.naive_bayes import GaussianNB
-from scipy.stats import randint
 
 # %%
 X_train = pd.read_csv('./datasets/final_proj_data.csv')
@@ -44,7 +43,10 @@ X_test.drop(columns=columns_to_drop, inplace=True)
 # %%
 preprocessor = ColumnTransformer(
     transformers=[
-        ('num', SimpleImputer(strategy='median'),  make_column_selector(dtype_exclude='object')),
+        ('num',  Pipeline(steps=[
+            ('imputer', SimpleImputer(strategy='median')), 
+            ('poly', PolynomialFeatures(degree=2, include_bias=False))
+        ]), make_column_selector(dtype_exclude='object')),
         ('cat', Pipeline(steps=[
             ('imputer', SimpleImputer(strategy='most_frequent')),
             ('encoder', OneHotEncoder(handle_unknown='ignore', sparse_output=False)),
@@ -57,7 +59,7 @@ preprocessor = ColumnTransformer(
 pipeline = ImbPipeline(steps=[
     ('preprocessor', preprocessor),
     ('smote', SMOTE(random_state=42)),
-    ('scaler', StandardScaler()),
+    ('scaler', RobustScaler()),
     ('classifier', RandomForestClassifier(random_state=42))
 ])
 
@@ -65,41 +67,21 @@ pipeline = ImbPipeline(steps=[
 scores = cross_val_score(pipeline, X_train, y, cv=5, scoring='balanced_accuracy')
 print(f'Cross-validated balanced accuracy: {np.mean(scores):.4f}')
 
-param_dist = {
-    'classifier__n_estimators': randint(50, 150),
-    'classifier__max_depth': randint(10, 30),
-    'classifier__min_samples_split': randint(2, 10),
-    'classifier__min_samples_leaf': randint(1, 5)
+param_grid = {
+    'classifier__n_estimators': [50, 100],  # Fewer options for number of trees
+    'classifier__max_depth': [10, 20],  # Limit the depth options
+    'classifier__min_samples_split': [2, 5],  # Reduce the number of split options
+    'classifier__min_samples_leaf': [1, 2]  # Fewer options for minimum samples at leaf
 }
 
-random_search = RandomizedSearchCV(
-    pipeline, 
-    param_distributions=param_dist, 
-    n_iter=10, 
-    cv=5, 
-    n_jobs=-1, 
-    scoring='balanced_accuracy', 
-    verbose=2
-)
+grid_search = GridSearchCV(pipeline, 
+                           param_grid, 
+                           cv=5, 
+                           n_jobs=-1, 
+                           scoring='balanced_accuracy', 
+                           verbose=2)
 
-random_search.fit(X_train, y)
-# param_grid = {
-#     'classifier__n_estimators': [50, 100],  # Fewer options for number of trees
-#     'classifier__max_depth': [10, 20],  # Limit the depth options
-#     'classifier__min_samples_split': [2, 5],  # Reduce the number of split options
-#     'classifier__min_samples_leaf': [1, 2]  # Fewer options for minimum samples at leaf
-# }
-
-# grid_search = GridSearchCV(pipeline, 
-#                            param_grid, 
-#                            cv=5, 
-#                            n_jobs=-1, 
-#                            scoring='balanced_accuracy', 
-#                            verbose=2)
-# parameters_best = grid_search.best_params_
-# pipe_upd = pipeline.set_params(**parameters_best)
-
-# model_upd = pipe_upd.fit(X, y)
+grid_search.fit(X_train, y)
 
 print(f'Best cross-validated balanced accuracy: {grid_search.best_score_:.4f}')
 
@@ -107,7 +89,11 @@ print(f'Best cross-validated balanced accuracy: {grid_search.best_score_:.4f}')
 client_ids = X_test.index 
 results = pd.DataFrame({
     'index': client_ids,
-    'y': random_search.best_estimator_.predict(X_test)
+    'y': grid_search.best_estimator_.predict(X_test)
 })
 results.to_csv('./datasets/submission.csv', index=False)
+
+# -*- coding: utf-8 -*-
+
+# -*- coding: utf-8 -*-
 
